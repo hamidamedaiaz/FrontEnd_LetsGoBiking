@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Let's Go Biking - Itinéraire</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- CSS personnalisé -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/itinerary.css">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <h1>🚴 Let's Go Biking</h1>
+        </div>
+        <nav class="nav-links">
+            <a href="index.html">Accueil</a>
+            <a href="itinerary.html" class="active">Itinéraire</a>
+        </nav>
+    </header>
+
+    <!-- Burger menu -->
+    <div class="burger-menu">
+        <span></span><span></span><span></span>
+    </div>
+
+    <!-- Sidebar Mobile -->
+    <aside class="mobile-sidebar">
+        <h2>Menu</h2>
+        <ul>
+            <li><a href="index.html">🏠 Accueil</a></li>
+            <li><a href="itinerary.html">🚴 Itinéraire</a></li>
+        </ul>
+    </aside>
+
+    <!-- Page Itinéraire -->
+    <main class="itinerary-page">
+
+        <!-- Sidebar Gauche (Recherche + Steps) -->
+        <aside class="search-sidebar" id="searchSidebar">
+
+            <div class="sidebar-header">
+                <h2>Calculer un itinéraire</h2>
+                <button class="toggle-sidebar-btn" id="toggleSidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="search-form">
+
+                <!-- Input départ -->
+                <div class="input-group">
+                    <label for="originInput">
+                        <i class="fas fa-map-marker-alt" style="color:#3498db;"></i> Départ
+                    </label>
+
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="originInput" placeholder="Entrez une adresse de départ..." autocomplete="off">
+                        <ul class="autocomplete-results" id="origin-results"></ul>
+                    </div>
+                </div>
+
+                <!-- Input destination -->
+                <div class="input-group">
+                    <label for="destinationInput">
+                        <i class="fas fa-map-marker-alt" style="color:#e74c3c;"></i> Arrivée
+                    </label>
+
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="destinationInput" placeholder="Entrez une adresse d'arrivée..." autocomplete="off">
+                        <ul class="autocomplete-results" id="destination-results"></ul>
+                    </div>
+                </div>
+
+                <!-- Bouton calcul -->
+                <button class="calculate-btn" id="calculateBtn">
+                    <i class="fas fa-route"></i> Calculer l'itinéraire
+                </button>
+            </div>
+
+            <!-- Résultats -->
+            <div class="results-container" id="resultsContainer" style="display:none;">
+
+                <div class="results-header">
+                    <h3>Résultats</h3>
+                </div>
+
+                <!-- Résumé -->
+                <div class="summary" id="summary"></div>
+
+                <!-- Instructions -->
+                <div class="instructions" id="instructions">
+                    <h4><i class="fas fa-list"></i> Instructions</h4>
+                    <div id="steps"></div>
+                </div>
+            </div>
+
+            <!-- Chargement -->
+            <div class="loading" id="loading" style="display:none;">
+                <div class="spinner"></div>
+                <p>Calcul en cours...</p>
+            </div>
+
+            <!-- Erreur -->
+            <div class="error-message" id="errorMessage" style="display:none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p id="errorText"></p>
+            </div>
+
+        </aside>
+
+        <!-- Carte -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <button class="floating-btn" id="openSidebar">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="map-legend">
+                <h4>Légende</h4>
+                <div class="legend-item">
+                    <div class="legend-line bike"></div>
+                    <span>🚴 Trajet à vélo</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-line walk"></div>
+                    <span>🚶 Trajet à pied</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="overlay"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Module Principal -->
+    <script type="module" src="js/pages/itinerary.js"></script>
+
+</body>
+</html>

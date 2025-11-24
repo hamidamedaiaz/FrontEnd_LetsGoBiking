@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let's Go Biking - Accueil</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+
+<header>
+    <div class="logo">
+        <h1>🚴 Let's Go Biking</h1>
+    </div>
+    <nav class="nav-links">
+        <a href="index.html" class="active">Accueil</a>
+        <a href="itinerary.html">Itinéraire</a>
+    </nav>
+</header>
+
+<!-- Burger Menu mobile -->
+<div class="burger-menu">
+    <span></span><span></span><span></span>
+</div>
+
+<aside class="mobile-sidebar">
+    <h2>Menu</h2>
+    <ul>
+        <li><a href="index.html">🏠 Accueil</a></li>
+        <li><a href="itinerary.html">🚴 Itinéraire</a></li>
+    </ul>
+</aside>
+
+<main>
+    <h1>Trouvez votre itinéraire vélo</h1>
+
+    <div class="search-container">
+
+        <div class="input-group">
+            <label>Point de départ :</label>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="origin" placeholder="Entrez une adresse..." autocomplete="off">
+                <ul class="autocomplete-results" id="origin-results"></ul>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>Destination :</label>
+            <div class="autocomplete-wrapper">
+                <input type="text" id="destination" placeholder="Entrez une adresse..." autocomplete="off">
+                <ul class="autocomplete-results" id="destination-results"></ul>
+            </div>
+        </div>
+
+        <button id="search-btn">Rechercher un itinéraire</button>
+    </div>
+</main>
+
+<footer>
+    <p>&copy; 2025 Let's Go Biking - Projet SOC/Middleware</p>
+</footer>
+
+<div class="overlay"></div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay">
+    <div class="bike-loader">
+        <svg class="bike-svg" viewBox="0 0 200 100">
+            <circle class="wheel" cx="40" cy="70" r="20" fill="none" stroke="#3498db" stroke-width="3"/>
+            <circle class="wheel" cx="160" cy="70" r="20" fill="none" stroke="#3498db" stroke-width="3"/>
+            <path d="M 40 70 L 100 30 L 160 70" fill="none" stroke="#3498db" stroke-width="3"/>
+            <circle cx="100" cy="30" r="8" fill="#3498db"/>
+        </svg>
+        <p class="loading-text">Calcul de l'itinéraire...</p>
+    </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>
