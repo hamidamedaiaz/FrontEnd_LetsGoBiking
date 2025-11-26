@@ -16,12 +16,17 @@ class MapService {
      * Initialise la carte
      */
     initMap(lat = 43.7102, lon = 7.2620, zoom = 13) {
-        this.map = L.map('map').setView([lat, lon], zoom);
+        this.map = L.map('map', {
+            attributionControl: true
+        }).setView([lat, lon], zoom);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
+            attribution: '© OSM',
             maxZoom: 19
         }).addTo(this.map);
+
+        // Repositionner et styliser l'attribution
+        this.map.attributionControl.setPrefix('');
 
         console.log('🗺️ Carte initialisée');
     }

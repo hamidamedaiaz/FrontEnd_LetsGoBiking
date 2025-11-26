@@ -4,75 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Let's Go Biking - Accueil</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="css/main.css">
 </head>
 
 <body>
 
-<header>
-    <div class="logo">
-        <h1>🚴 Let's Go Biking</h1>
-    </div>
-    <nav class="nav-links">
-        <a href="index.html" class="active">Accueil</a>
-        <a href="itinerary.html">Itinéraire</a>
-    </nav>
-</header>
-
-<!-- Burger Menu mobile -->
-<div class="burger-menu">
-    <span></span><span></span><span></span>
-</div>
-
-<aside class="mobile-sidebar">
-    <h2>Menu</h2>
-    <ul>
-        <li><a href="index.html">🏠 Accueil</a></li>
-        <li><a href="itinerary.html">🚴 Itinéraire</a></li>
-    </ul>
-</aside>
-
-<main>
-    <h1>Trouvez votre itinéraire vélo</h1>
-
-    <div class="search-container">
-
-        <div class="input-group">
-            <label>Point de départ :</label>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="origin" placeholder="Entrez une adresse..." autocomplete="off">
-                <ul class="autocomplete-results" id="origin-results"></ul>
-            </div>
+<!-- Header et Mobile Nav seront injectés par JS --><!-- ========================================
+     MAIN CONTENT
+     ======================================== -->
+<main class="main-content">
+    
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Trouvez votre itinéraire vélo</h1>
+            <p class="hero-description">Planifiez vos déplacements urbains en vélo avec les stations en libre-service. Trouvez les meilleures stations de départ et d'arrivée avec des informations en temps réel sur la disponibilité des vélos.</p>
         </div>
+    </section>
 
-        <div class="input-group">
-            <label>Destination :</label>
-            <div class="autocomplete-wrapper">
-                <input type="text" id="destination" placeholder="Entrez une adresse..." autocomplete="off">
-                <ul class="autocomplete-results" id="destination-results"></ul>
+    <!-- Search Section -->
+    <section class="search-section">
+        <div class="search-container">
+            
+            <!-- Origin Input -->
+            <div class="input-group origin-group">
+                <label for="origin" class="input-label">Adresse de départ</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="origin" class="address-input" placeholder="Entrez une adresse..." autocomplete="off">
+                    <ul class="autocomplete-results" id="origin-results"></ul>
+                </div>
             </div>
-        </div>
 
-        <button id="search-btn">Rechercher un itinéraire</button>
-    </div>
+            <!-- Destination Input -->
+            <div class="input-group destination-group">
+                <label for="destination" class="input-label">Adresse d'arrivée</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="destination" class="address-input" placeholder="Entrez une adresse..." autocomplete="off">
+                    <ul class="autocomplete-results" id="destination-results"></ul>
+                </div>
+            </div>
+
+            <!-- Search Button -->
+            <div class="button-group">
+                <button id="search-btn" class="search-button">
+                    <i class="fas fa-search"></i>
+                    Trouver mon itinéraire
+                </button>
+            </div>
+            
+        </div>
+    </section>
+    
 </main>
 
-<footer>
-    <p>&copy; 2025 Let's Go Biking - Projet SOC/Middleware</p>
-</footer>
+<!-- Footer sera injecté par JS -->
 
-<div class="overlay"></div>
-
-<!-- Loading overlay -->
-<div class="loading-overlay">
-    <div class="bike-loader">
-        <svg class="bike-svg" viewBox="0 0 200 100">
-            <circle class="wheel" cx="40" cy="70" r="20" fill="none" stroke="#3498db" stroke-width="3"/>
-            <circle class="wheel" cx="160" cy="70" r="20" fill="none" stroke="#3498db" stroke-width="3"/>
-            <path d="M 40 70 L 100 30 L 160 70" fill="none" stroke="#3498db" stroke-width="3"/>
-            <circle cx="100" cy="30" r="8" fill="#3498db"/>
-        </svg>
-        <p class="loading-text">Calcul de l'itinéraire...</p>
+<!-- ========================================
+     OVERLAYS
+     ======================================== -->
+<div class="overlay-container">
+    <!-- Mobile Menu Overlay -->
+    <div class="overlay"></div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay">
+        <div class="bike-loader">
+            <svg class="bike-svg" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- Roue arrière -->
+                <g class="wheel-back">
+                    <circle cx="40" cy="70" r="18" fill="none" stroke="#2563EB" stroke-width="2.5"/>
+                    <line x1="40" y1="52" x2="40" y2="88" stroke="#2563EB" stroke-width="1.5"/>
+                    <line x1="22" y1="70" x2="58" y2="70" stroke="#2563EB" stroke-width="1.5"/>
+                    <line x1="27" y1="57" x2="53" y2="83" stroke="#2563EB" stroke-width="1.5"/>
+                    <line x1="27" y1="83" x2="53" y2="57" stroke="#2563EB" stroke-width="1.5"/>
+                    <circle cx="40" cy="70" r="4" fill="#2563EB"/>
+                </g>
+                
+                <!-- Roue avant -->
+                <g class="wheel-front">
+                    <circle cx="140" cy="70" r="18" fill="none" stroke="#2563EB" stroke-width="2.5"/>
+                    <line x1="140" y1="52" x2="140" y2="88" stroke="#2563EB" stroke-width="1.5"/>
+                    <line x1="122" y1="70" x2="158" y2="70" stroke="#2563EB" stroke-width="1.5"/>
+                    <line x1="127" y1="57" x2="153" y2="83" stroke="#2563EB" stroke-width="1.5"/>
+                    <line x1="127" y1="83" x2="153" y2="57" stroke="#2563EB" stroke-width="1.5"/>
+                    <circle cx="140" cy="70" r="4" fill="#2563EB"/>
+                </g>
+                
+                <!-- Cadre du vélo -->
+                <g class="bike-frame">
+                    <!-- Triangle principal -->
+                    <path d="M 40 70 L 90 35 L 140 70 L 90 70 L 40 70" fill="none" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
+                    <!-- Guidon -->
+                    <path d="M 140 70 L 150 50 L 160 48" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round"/>
+                    <!-- Selle -->
+                    <path d="M 90 35 L 85 28" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round"/>
+                    <ellipse cx="85" cy="25" rx="8" ry="3" fill="#2563EB"/>
+                    <!-- Pédalier -->
+                    <circle cx="90" cy="70" r="6" fill="none" stroke="#2563EB" stroke-width="2"/>
+                    <line x1="90" y1="64" x2="90" y2="76" stroke="#2563EB" stroke-width="2"/>
+                </g>
+            </svg>
+            <p class="loading-text">Calcul de l'itinéraire...</p>
+        </div>
     </div>
 </div>
 
