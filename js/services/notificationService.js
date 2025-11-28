@@ -15,7 +15,7 @@ class NotificationService {
     }
 
     /**
-     * Initialise la connexion WebSocket vers le proxy ActiveMQ
+     * Initialise la connexion WebSocket vers ActiveMQ via STOMP
      */
     connect() {
         // Vérifier si déjà en mode démo
@@ -24,67 +24,110 @@ class NotificationService {
         }
 
         try {
-            // URL du WebSocket proxy vers ActiveMQ (à adapter selon votre configuration)
-            this.ws = new WebSocket('ws://localhost:61614');
+            // Essayer les ports WebSocket et STOMP d'ActiveMQ
+            const wsUrls = [
+                'ws://localhost:61614',  // WebSocket natif
+                'ws://localhost:61613'   // STOMP over WebSocket
+            ];
 
-            // Timeout de 2 secondes pour détecter si ActiveMQ n'est pas disponible
-            const connectionTimeout = setTimeout(() => {
-                if (this.ws.readyState !== WebSocket.OPEN) {
-                    console.warn('⚠️ ActiveMQ non disponible, passage en mode démo');
-                    this.ws.close();
-                    this.mockMode = true;
-                    this.loadMockNotifications();
-                }
-            }, 2000);
-
-            this.ws.onopen = () => {
-                clearTimeout(connectionTimeout);
-                console.log('✅ Connected to ActiveMQ notifications');
-                this.reconnectAttempts = 0;
-                
-                // S'abonner au topic notifications.global
-                const subscribeFrame = `CONNECT
-accept-version:1.2
-heart-beat:0,0
-
-\0SUBSCRIBE
-id:sub-0
-destination:/topic/notifications.global
-ack:auto
-
-\0`;
-                console.log('📤 Sending STOMP subscription frame...');
-                this.ws.send(subscribeFrame);
-            };
-
-            this.ws.onmessage = (event) => {
-                console.log('📨 Received message from ActiveMQ:', event.data);
-                this.handleMessage(event.data);
-            };
-
-            this.ws.onerror = () => {
-                clearTimeout(connectionTimeout);
-                // Silencieux - géré par onclose
-            };
-
-            this.ws.onclose = () => {
-                clearTimeout(connectionTimeout);
-                // Ne pas reconnecter automatiquement en boucle
-                if (!this.mockMode && this.reconnectAttempts < 2) {
-                    this.reconnectAttempts++;
-                    setTimeout(() => this.connect(), this.reconnectInterval);
-                } else if (!this.mockMode) {
-                    console.warn('⚠️ Passage en mode démo');
-                    this.mockMode = true;
-                    this.loadMockNotifications();
-                }
-            };
+            this.tryConnect(wsUrls, 0);
 
         } catch (error) {
             console.warn('⚠️ ActiveMQ non disponible, passage en mode démo');
             this.mockMode = true;
             this.loadMockNotifications();
         }
+    }
+
+    /**
+     * Tente de se connecter aux différents ports disponibles
+     */
+    tryConnect(urls, index) {
+        if (index >= urls.length) {
+            console.warn('⚠️ Aucun port ActiveMQ disponible, passage en mode démo');
+            this.mockMode = true;
+            this.loadMockNotifications();
+            return;
+        }
+
+        const url = urls[index];
+        console.log(`🔌 Tentative de connexion à ${url}...`);
+
+        // IMPORTANT : Spécifier les sous-protocoles STOMP acceptés
+        this.ws = new WebSocket(url, ['v12.stomp', 'v11.stomp', 'v10.stomp']);
+
+        // Timeout de connexion
+        const connectionTimeout = setTimeout(() => {
+            if (this.ws.readyState !== WebSocket.OPEN) {
+                console.warn(`❌ Timeout sur ${url}`);
+                this.ws.close();
+                this.tryConnect(urls, index + 1);
+            }
+        }, 2000);
+
+        this.ws.onopen = () => {
+            clearTimeout(connectionTimeout);
+            console.log(`✅ Connecté à ActiveMQ sur ${url}`);
+            this.reconnectAttempts = 0;
+            
+            // Envoyer frame STOMP CONNECT
+            this.sendStompFrame('CONNECT', {
+                'accept-version': '1.2',
+                'heart-beat': '0,0'
+            });
+
+            // S'abonner au topic après connexion
+            setTimeout(() => {
+                this.sendStompFrame('SUBSCRIBE', {
+                    'id': 'sub-0',
+                    'destination': '/topic/notifications.global',
+                    'ack': 'auto'
+                });
+                console.log('📬 Abonné au topic notifications.global');
+            }, 500);
+        };
+
+        this.ws.onmessage = (event) => {
+            console.log('📨 Message reçu:', event.data);
+            this.handleMessage(event.data);
+        };
+
+        this.ws.onerror = (error) => {
+            clearTimeout(connectionTimeout);
+            console.warn(`⚠️ Erreur WebSocket sur ${url}:`, error);
+        };
+
+        this.ws.onclose = () => {
+            clearTimeout(connectionTimeout);
+            console.log('🔌 Connexion fermée');
+            
+            // Tenter le prochain port ou passer en mode démo
+            if (this.reconnectAttempts < 1) {
+                this.reconnectAttempts++;
+                setTimeout(() => this.tryConnect(urls, index + 1), 1000);
+            } else if (!this.mockMode) {
+                console.warn('⚠️ Passage en mode démo');
+                this.mockMode = true;
+                this.loadMockNotifications();
+            }
+        };
+    }
+
+    /**
+     * Envoie une frame STOMP formatée
+     */
+    sendStompFrame(command, headers, body = '') {
+        let frame = command + '\n';
+        
+        // Ajouter les headers
+        for (let key in headers) {
+            frame += key + ':' + headers[key] + '\n';
+        }
+        
+        frame += '\n' + body + '\0';
+        
+        console.log('📤 Envoi frame STOMP:', command);
+        this.ws.send(frame);
     }
 
     /**
@@ -129,44 +172,72 @@ ack:auto
      */
     handleMessage(data) {
         try {
-            // Parser le message STOMP
+            console.log('🔍 Parsing message:', data);
+            
+            // Ignorer les frames CONNECTED et RECEIPT
+            if (data.startsWith('CONNECTED') || data.startsWith('RECEIPT')) {
+                console.log('✅ Frame système reçue:', data.split('\n')[0]);
+                return;
+            }
+
+            // Parser le message STOMP MESSAGE
+            if (!data.startsWith('MESSAGE')) {
+                console.warn('⚠️ Frame non-MESSAGE ignorée');
+                return;
+            }
+
             const lines = data.split('\n');
             let messageBody = '';
             let eventType = '';
             let severity = 'LOW';
             let timestamp = new Date().toISOString();
+            let inBody = false;
 
-            // Extraire les propriétés du message
+            // Extraire les headers et le body
             for (let i = 0; i < lines.length; i++) {
-                if (lines[i].startsWith('EventType:')) {
-                    eventType = lines[i].split(':')[1].trim();
+                const line = lines[i];
+
+                if (line === '' || line === '\0') {
+                    inBody = true;
+                    continue;
                 }
-                if (lines[i].startsWith('Severity:')) {
-                    severity = lines[i].split(':')[1].trim();
-                }
-                if (lines[i].startsWith('Timestamp:')) {
-                    timestamp = lines[i].split(':')[1].trim();
-                }
-                if (lines[i] === '' && i < lines.length - 1) {
-                    messageBody = lines[i + 1];
-                    break;
+
+                if (inBody) {
+                    messageBody += line;
+                } else {
+                    // Parser les headers
+                    if (line.includes(':')) {
+                        const [key, ...valueParts] = line.split(':');
+                        const value = valueParts.join(':').trim();
+
+                        if (key === 'EventType') eventType = value;
+                        if (key === 'Severity') severity = value;
+                        if (key === 'Timestamp') timestamp = value;
+                    }
                 }
             }
+
+            // Nettoyer le body (enlever \0 à la fin)
+            messageBody = messageBody.replace(/\0/g, '').trim();
+
+            console.log('📦 Message parsé:', { messageBody, eventType, severity, timestamp });
 
             if (messageBody) {
                 const notification = {
                     id: Date.now() + Math.random(),
                     message: messageBody,
-                    eventType: eventType,
+                    eventType: eventType || 'UNKNOWN',
                     severity: severity,
-                    timestamp: new Date(timestamp),
+                    timestamp: timestamp ? new Date(timestamp) : new Date(),
                     read: false
                 };
 
+                console.log('✅ Notification créée:', notification);
                 this.addNotification(notification);
             }
         } catch (error) {
-            console.error('❌ Error parsing message:', error);
+            console.error('❌ Erreur parsing message:', error);
+            console.error('❌ Data brute:', data);
         }
     }
 
@@ -174,6 +245,8 @@ ack:auto
      * Ajoute une notification et notifie les écouteurs
      */
     addNotification(notification) {
+        console.log('➕ Ajout notification:', notification.message);
+        
         this.notifications.unshift(notification);
         
         // Limiter le nombre de notifications
@@ -181,8 +254,13 @@ ack:auto
             this.notifications.pop();
         }
 
+        console.log(`📊 Total notifications: ${this.notifications.length}`);
+
         // Notifier tous les écouteurs
-        this.listeners.forEach(callback => callback(notification));
+        this.listeners.forEach(callback => {
+            console.log('🔔 Notification des listeners');
+            callback(notification);
+        });
     }
 
     /**
