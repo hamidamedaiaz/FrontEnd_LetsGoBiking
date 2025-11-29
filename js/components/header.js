@@ -33,9 +33,9 @@ export function createHeader(activePage = 'accueil') {
     <aside class="mobile-sidebar">
         <h2>Menu</h2>
         <ul>
-            <li><a href="html/index.html"><i class="fas fa-home"></i> Accueil</a></li>
-            <li><a href="html/itinerary.html"><i class="fas fa-route"></i> Itinéraire</a></li>
-            <li><a href="html/about.html"><i class="fas fa-info-circle"></i> À propos</a></li>
+            <li><a href="index.html"><i class="fas fa-home"></i> Accueil</a></li>
+            <li><a href="itinerary.html"><i class="fas fa-route"></i> Itinéraire</a></li>
+            <li><a href="about.html"><i class="fas fa-info-circle"></i> À propos</a></li>
         </ul>
     </aside>
 </div>
