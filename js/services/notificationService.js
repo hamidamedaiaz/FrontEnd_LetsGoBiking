@@ -313,6 +313,8 @@ class NotificationService {
     addListener(callback) {
         if (typeof callback === 'function') {
             this.listeners.push(callback);
+        } else {
+            console.error('[NotificationService] addListener requires a function callback');
         }
     }
 
