@@ -1,92 +1,127 @@
+/**
+ * Main Application Entry Point
+ * 
+ * Initializes the home page with header, footer, burger menu,
+ * address autocomplete and search functionality.
+ * 
+ * @module main
+ */
+
 import { initHeader } from './components/header.js';
 import { initFooter } from './components/footer.js';
 import AddressAutocomplete from './autocomplete.js';
 
-// === INITIALISATION DES COMPOSANTS ===
-// Injecter le header et footer
-initHeader('accueil'); // Page active : 'accueil'
-initFooter();
+/**
+ * Initialize page components
+ */
+function initializeComponents() {
+    initHeader('accueil');
+    initFooter();
+}
 
-// === BURGER MENU ===
-// Attendre que le DOM soit prêt après injection
-setTimeout(() => {
-    const burgerMenu = document.querySelector('.burger-menu');
-    const mobileSidebar = document.querySelector('.mobile-sidebar');
-    const overlay = document.querySelector('.overlay');
-    let menuOpen = false;
+/**
+ * Initialize burger menu for mobile navigation
+ */
+function initializeBurgerMenu() {
+    setTimeout(() => {
+        const burgerMenu = document.querySelector('.burger-menu');
+        const mobileSidebar = document.querySelector('.mobile-sidebar');
+        const overlay = document.querySelector('.overlay');
+        
+        if (!burgerMenu || !mobileSidebar || !overlay) {
+            console.warn('[Main] Burger menu elements not found');
+            return;
+        }
 
-    function openMenu() {
-        burgerMenu.classList.add('active');
-        mobileSidebar.classList.add('active');
-        overlay.classList.add('active');
-        menuOpen = true;
-    }
+        let menuOpen = false;
 
-    function closeMenu() {
-        burgerMenu.classList.remove('active');
-        mobileSidebar.classList.remove('active');
-        overlay.classList.remove('active');
-        menuOpen = false;
-    }
+        const openMenu = () => {
+            burgerMenu.classList.add('active');
+            mobileSidebar.classList.add('active');
+            overlay.classList.add('active');
+            menuOpen = true;
+        };
 
-    if (burgerMenu) {
+        const closeMenu = () => {
+            burgerMenu.classList.remove('active');
+            mobileSidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            menuOpen = false;
+        };
+
         burgerMenu.addEventListener('click', () => {
             menuOpen ? closeMenu() : openMenu();
         });
-    }
 
-    if (overlay) {
         overlay.addEventListener('click', closeMenu);
-    }
 
-    if (mobileSidebar) {
-        document.querySelectorAll('.mobile-sidebar a').forEach(link => {
+        mobileSidebar.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
                 if (menuOpen) closeMenu();
             });
         });
-    }
-}, 0);
+    }, 0);
+}
 
-// === AUTOCOMPLETE ===
-const originAutocomplete = new AddressAutocomplete('origin', 'origin-results');
-const destinationAutocomplete = new AddressAutocomplete('destination', 'destination-results');
+/**
+ * Initialize autocomplete for origin and destination inputs
+ * 
+ * @returns {Object} Autocomplete instances
+ */
+function initializeAutocomplete() {
+    const originAutocomplete = new AddressAutocomplete('origin', 'origin-results');
+    const destinationAutocomplete = new AddressAutocomplete('destination', 'destination-results');
 
-// Écouter la sélection des adresses
-document.getElementById('origin').addEventListener('addressSelected', (e) => {
-    console.log('Origine sélectionnée:', e.detail);
-});
+    document.getElementById('origin').addEventListener('addressSelected', (e) => {
+        console.info('[Main] Origin address selected:', e.detail.label);
+    });
 
-document.getElementById('destination').addEventListener('addressSelected', (e) => {
-    console.log('Destination sélectionnée:', e.detail);
-});
+    document.getElementById('destination').addEventListener('addressSelected', (e) => {
+        console.info('[Main] Destination address selected:', e.detail.label);
+    });
 
-// === BOUTON RECHERCHER ===
-document.getElementById('search-btn').addEventListener('click', () => {
-    const origin = originAutocomplete.getSelectedAddress();
-    const destination = destinationAutocomplete.getSelectedAddress();
+    return { originAutocomplete, destinationAutocomplete };
+}
 
-    if (!origin || !destination) {
-        alert('Veuillez sélectionner une origine et une destination');
+/**
+ * Initialize search button functionality
+ * 
+ * @param {Object} autocomplete - Autocomplete instances
+ */
+function initializeSearchButton({ originAutocomplete, destinationAutocomplete }) {
+    const searchButton = document.getElementById('search-btn');
+    
+    if (!searchButton) {
+        console.error('[Main] Search button not found');
         return;
     }
 
-    // Afficher le loader
-    showLoader();
+    searchButton.addEventListener('click', () => {
+        const origin = originAutocomplete.getSelectedAddress();
+        const destination = destinationAutocomplete.getSelectedAddress();
 
-    // Sauvegarder dans localStorage
-    localStorage.setItem('itinerary', JSON.stringify({
-        origin,
-        destination
-    }));
+        if (!origin || !destination) {
+            alert('Veuillez sélectionner une origine et une destination');
+            return;
+        }
 
-    // Rediriger après 2 secondes
-    setTimeout(() => {
-        window.location.href = 'itinerary.html';
-    }, 2000);
-});
+        showLoader();
 
-// Fonctions loader
+        localStorage.setItem('itinerary', JSON.stringify({
+            origin,
+            destination
+        }));
+
+        console.info('[Main] Redirecting to itinerary page');
+        setTimeout(() => {
+            window.location.href = 'itinerary.html';
+        }, 2000);
+    });
+}
+
+/**
+ * Show loading overlay
+ */
 function showLoader() {
     const loader = document.querySelector('.loading-overlay');
     if (loader) {
@@ -94,9 +129,25 @@ function showLoader() {
     }
 }
 
+/**
+ * Hide loading overlay
+ */
 function hideLoader() {
     const loader = document.querySelector('.loading-overlay');
     if (loader) {
         loader.classList.remove('active');
     }
 }
+
+/**
+ * Application initialization
+ */
+(function init() {
+    console.info('[Main] Application initialized');
+    
+    initializeComponents();
+    initializeBurgerMenu();
+    
+    const autocomplete = initializeAutocomplete();
+    initializeSearchButton(autocomplete);
+})();
