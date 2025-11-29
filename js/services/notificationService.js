@@ -1,9 +1,24 @@
 /**
- * Service de gestion des notifications depuis ActiveMQ
- * Écoute les événements de pollution, maintenance, disponibilité, météo et trafic
+ * NotificationService
+ * 
+ * Service de gestion des notifications en temps réel depuis ActiveMQ.
+ * Gère la connexion WebSocket STOMP, l'abonnement aux topics et la distribution
+ * des notifications aux listeners.
+ * 
+ * Features:
+ * - Connexion WebSocket avec protocole STOMP
+ * - Tentative sur plusieurs ports (61614, 61613)
+ * - Fallback en mode démo si ActiveMQ indisponible
+ * - Gestion des reconnexions
+ * - Distribution des événements aux listeners
+ * 
+ * @class NotificationService
  */
-
 class NotificationService {
+    /**
+     * @constructor
+     * Initialise le service de notifications
+     */
     constructor() {
         this.notifications = [];
         this.maxNotifications = 50;
@@ -12,126 +27,158 @@ class NotificationService {
         this.listeners = [];
         this.mockMode = false;
         this.reconnectAttempts = 0;
+        
+        this.WEBSOCKET_URLS = [
+            'ws://localhost:61614',  // WebSocket natif
+            'ws://localhost:61613'   // STOMP over WebSocket
+        ];
+        
+        this.STOMP_PROTOCOLS = ['v12.stomp', 'v11.stomp', 'v10.stomp'];
+        this.CONNECTION_TIMEOUT = 2000;
     }
 
     /**
-     * Initialise la connexion WebSocket vers ActiveMQ via STOMP
+     * Démarre la connexion au serveur ActiveMQ
+     * Tente de se connecter aux différents ports disponibles
+     * 
+     * @public
      */
     connect() {
-        // Vérifier si déjà en mode démo
         if (this.mockMode) {
+            console.info('[NotificationService] Already in demo mode');
             return;
         }
 
         try {
-            // Essayer les ports WebSocket et STOMP d'ActiveMQ
-            const wsUrls = [
-                'ws://localhost:61614',  // WebSocket natif
-                'ws://localhost:61613'   // STOMP over WebSocket
-            ];
-
-            this.tryConnect(wsUrls, 0);
-
+            this.tryConnect(this.WEBSOCKET_URLS, 0);
         } catch (error) {
-            console.warn('⚠️ ActiveMQ non disponible, passage en mode démo');
-            this.mockMode = true;
-            this.loadMockNotifications();
+            console.error('[NotificationService] Connection failed:', error.message);
+            this.enableMockMode();
         }
     }
 
     /**
-     * Tente de se connecter aux différents ports disponibles
+     * Tente de se connecter à une URL WebSocket spécifique
+     * 
+     * @private
+     * @param {Array<string>} urls - Liste des URLs à essayer
+     * @param {number} index - Index de l'URL courante
      */
     tryConnect(urls, index) {
         if (index >= urls.length) {
-            console.warn('⚠️ Aucun port ActiveMQ disponible, passage en mode démo');
-            this.mockMode = true;
-            this.loadMockNotifications();
+            console.warn('[NotificationService] All connection attempts failed, switching to demo mode');
+            this.enableMockMode();
             return;
         }
 
         const url = urls[index];
-        console.log(`🔌 Tentative de connexion à ${url}...`);
+        console.info(`[NotificationService] Attempting connection to ${url}`);
 
-        // IMPORTANT : Spécifier les sous-protocoles STOMP acceptés
-        this.ws = new WebSocket(url, ['v12.stomp', 'v11.stomp', 'v10.stomp']);
+        this.ws = new WebSocket(url, this.STOMP_PROTOCOLS);
 
-        // Timeout de connexion
         const connectionTimeout = setTimeout(() => {
             if (this.ws.readyState !== WebSocket.OPEN) {
-                console.warn(`❌ Timeout sur ${url}`);
+                console.warn(`[NotificationService] Connection timeout on ${url}`);
                 this.ws.close();
                 this.tryConnect(urls, index + 1);
             }
-        }, 2000);
+        }, this.CONNECTION_TIMEOUT);
 
         this.ws.onopen = () => {
             clearTimeout(connectionTimeout);
-            console.log(`✅ Connecté à ActiveMQ sur ${url}`);
+            console.info(`[NotificationService] Connected successfully to ${url}`);
             this.reconnectAttempts = 0;
-            
-            // Envoyer frame STOMP CONNECT
-            this.sendStompFrame('CONNECT', {
-                'accept-version': '1.2',
-                'heart-beat': '0,0'
-            });
-
-            // S'abonner au topic après connexion
-            setTimeout(() => {
-                this.sendStompFrame('SUBSCRIBE', {
-                    'id': 'sub-0',
-                    'destination': '/topic/notifications.global',
-                    'ack': 'auto'
-                });
-                console.log('📬 Abonné au topic notifications.global');
-            }, 500);
+            this.sendStompConnect();
+            this.subscribeToTopic();
         };
 
         this.ws.onmessage = (event) => {
-            console.log('📨 Message reçu:', event.data);
             this.handleMessage(event.data);
         };
 
         this.ws.onerror = (error) => {
             clearTimeout(connectionTimeout);
-            console.warn(`⚠️ Erreur WebSocket sur ${url}:`, error);
+            console.error(`[NotificationService] WebSocket error on ${url}:`, error);
         };
 
         this.ws.onclose = () => {
             clearTimeout(connectionTimeout);
-            console.log('🔌 Connexion fermée');
+            console.info('[NotificationService] Connection closed');
             
-            // Tenter le prochain port ou passer en mode démo
             if (this.reconnectAttempts < 1) {
                 this.reconnectAttempts++;
                 setTimeout(() => this.tryConnect(urls, index + 1), 1000);
             } else if (!this.mockMode) {
-                console.warn('⚠️ Passage en mode démo');
-                this.mockMode = true;
-                this.loadMockNotifications();
+                console.warn('[NotificationService] Max reconnection attempts reached');
+                this.enableMockMode();
             }
         };
     }
 
     /**
+     * Envoie la frame STOMP CONNECT
+     * 
+     * @private
+     */
+    sendStompConnect() {
+        this.sendStompFrame('CONNECT', {
+            'accept-version': '1.2',
+            'heart-beat': '0,0'
+        });
+    }
+
+    /**
+     * S'abonne au topic de notifications
+     * 
+     * @private
+     */
+    subscribeToTopic() {
+        setTimeout(() => {
+            this.sendStompFrame('SUBSCRIBE', {
+                'id': 'sub-0',
+                'destination': '/topic/notifications.global',
+                'ack': 'auto'
+            });
+            console.info('[NotificationService] Subscribed to topic: notifications.global');
+        }, 500);
+    }
+
+    /**
      * Envoie une frame STOMP formatée
+     * 
+     * @private
+     * @param {string} command - Commande STOMP (CONNECT, SUBSCRIBE, etc.)
+     * @param {Object} headers - Headers de la frame
+     * @param {string} body - Corps du message (optionnel)
      */
     sendStompFrame(command, headers, body = '') {
         let frame = command + '\n';
         
-        // Ajouter les headers
         for (let key in headers) {
             frame += key + ':' + headers[key] + '\n';
         }
         
         frame += '\n' + body + '\0';
         
-        console.log('📤 Envoi frame STOMP:', command);
+        console.debug(`[NotificationService] Sending STOMP frame: ${command}`);
         this.ws.send(frame);
     }
 
     /**
+     * Active le mode démonstration avec des notifications fictives
+     * 
+     * @private
+     */
+    enableMockMode() {
+        this.mockMode = true;
+        console.warn('[NotificationService] Demo mode enabled');
+        this.loadMockNotifications();
+    }
+
+    /**
      * Charge des notifications de démonstration
+     * 
+     * @private
      */
     loadMockNotifications() {
         const mockNotifs = [
@@ -168,21 +215,21 @@ class NotificationService {
     }
 
     /**
-     * Traite les messages reçus depuis ActiveMQ
+     * Traite les messages STOMP reçus depuis ActiveMQ
+     * Parse les frames STOMP et extrait les notifications
+     * 
+     * @private
+     * @param {string} data - Frame STOMP brute
      */
     handleMessage(data) {
         try {
-            console.log('🔍 Parsing message:', data);
-            
-            // Ignorer les frames CONNECTED et RECEIPT
             if (data.startsWith('CONNECTED') || data.startsWith('RECEIPT')) {
-                console.log('✅ Frame système reçue:', data.split('\n')[0]);
+                console.debug(`[NotificationService] System frame received: ${data.split('\n')[0]}`);
                 return;
             }
 
-            // Parser le message STOMP MESSAGE
             if (!data.startsWith('MESSAGE')) {
-                console.warn('⚠️ Frame non-MESSAGE ignorée');
+                console.debug('[NotificationService] Non-MESSAGE frame ignored');
                 return;
             }
 
@@ -193,7 +240,6 @@ class NotificationService {
             let timestamp = new Date().toISOString();
             let inBody = false;
 
-            // Extraire les headers et le body
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
@@ -205,7 +251,6 @@ class NotificationService {
                 if (inBody) {
                     messageBody += line;
                 } else {
-                    // Parser les headers
                     if (line.includes(':')) {
                         const [key, ...valueParts] = line.split(':');
                         const value = valueParts.join(':').trim();
@@ -217,10 +262,7 @@ class NotificationService {
                 }
             }
 
-            // Nettoyer le body (enlever \0 à la fin)
             messageBody = messageBody.replace(/\0/g, '').trim();
-
-            console.log('📦 Message parsé:', { messageBody, eventType, severity, timestamp });
 
             if (messageBody) {
                 const notification = {
@@ -232,46 +274,55 @@ class NotificationService {
                     read: false
                 };
 
-                console.log('✅ Notification créée:', notification);
+                console.info('[NotificationService] Notification received:', {
+                    type: notification.eventType,
+                    severity: notification.severity
+                });
+                
                 this.addNotification(notification);
             }
         } catch (error) {
-            console.error('❌ Erreur parsing message:', error);
-            console.error('❌ Data brute:', data);
+            console.error('[NotificationService] Message parsing error:', error.message);
         }
     }
 
     /**
-     * Ajoute une notification et notifie les écouteurs
+     * Ajoute une notification et notifie les listeners
+     * 
+     * @private
+     * @param {Object} notification - Notification à ajouter
      */
     addNotification(notification) {
-        console.log('➕ Ajout notification:', notification.message);
-        
         this.notifications.unshift(notification);
         
-        // Limiter le nombre de notifications
         if (this.notifications.length > this.maxNotifications) {
             this.notifications.pop();
         }
 
-        console.log(`📊 Total notifications: ${this.notifications.length}`);
+        console.debug(`[NotificationService] Total notifications: ${this.notifications.length}`);
 
-        // Notifier tous les écouteurs
-        this.listeners.forEach(callback => {
-            console.log('🔔 Notification des listeners');
-            callback(notification);
-        });
+        this.listeners.forEach(callback => callback(notification));
     }
 
     /**
-     * Ajoute un écouteur pour les nouvelles notifications
+     * Ajoute un listener pour les nouvelles notifications
+     * 
+     * @public
+     * @param {Function} callback - Fonction appelée lors d'une nouvelle notification
      */
     addListener(callback) {
-        this.listeners.push(callback);
+        if (typeof callback === 'function') {
+            this.listeners.push(callback);
+        } else {
+            console.error('[NotificationService] addListener requires a function callback');
+        }
     }
 
     /**
      * Marque une notification comme lue
+     * 
+     * @public
+     * @param {string} notificationId - ID de la notification
      */
     markAsRead(notificationId) {
         const notification = this.notifications.find(n => n.id === notificationId);
@@ -282,6 +333,8 @@ class NotificationService {
 
     /**
      * Marque toutes les notifications comme lues
+     * 
+     * @public
      */
     markAllAsRead() {
         this.notifications.forEach(n => n.read = true);
@@ -289,6 +342,9 @@ class NotificationService {
 
     /**
      * Récupère toutes les notifications
+     * 
+     * @public
+     * @returns {Array<Object>} Liste des notifications
      */
     getNotifications() {
         return this.notifications;
@@ -296,22 +352,32 @@ class NotificationService {
 
     /**
      * Compte les notifications non lues
+     * 
+     * @public
+     * @returns {number} Nombre de notifications non lues
      */
     getUnreadCount() {
         return this.notifications.filter(n => !n.read).length;
     }
 
     /**
-     * Déconnexion
+     * Ferme la connexion WebSocket
+     * 
+     * @public
      */
     disconnect() {
         if (this.ws) {
             this.ws.close();
+            console.info('[NotificationService] Disconnected');
         }
     }
 
     /**
-     * Obtient l'icône correspondant au type d'événement
+     * Obtient l'icône FontAwesome correspondant au type d'événement
+     * 
+     * @public
+     * @param {string} eventType - Type d'événement
+     * @returns {string} Classe CSS de l'icône
      */
     getIconForEventType(eventType) {
         const icons = {
@@ -328,6 +394,10 @@ class NotificationService {
 
     /**
      * Obtient la couleur correspondant à la sévérité
+     * 
+     * @public
+     * @param {string} severity - Niveau de sévérité (HIGH, MEDIUM, LOW)
+     * @returns {string} Code couleur hexadécimal
      */
     getColorForSeverity(severity) {
         const colors = {

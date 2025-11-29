@@ -8,6 +8,7 @@
     position: relative;
     height: calc(100vh - 50px);
     overflow: hidden;
+    display: flex;
 }
 
 /* Override body pour page itinéraire */
@@ -24,33 +25,29 @@ body {
    ============================================ */
 
 .search-sidebar {
-    position: absolute;
-    top: var(--space-6);
-    left: var(--space-6);
+    position: relative;
     width: 380px;
-    max-height: calc(100vh - 140px);
+    min-width: 380px;
+    max-height: 100%;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-radius: var(--radius-xl);
+    border-radius: 0;
     padding: var(--space-6);
     overflow-y: auto;
     overflow-x: hidden;
-    z-index: 1000;
-    box-shadow: var(--shadow-2xl);
+    z-index: 100;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
     transform: translateX(0);
-    opacity: 1;
 }
 
 .search-sidebar.hidden {
-    transform: translateX(-420px);
-    opacity: 0;
-    pointer-events: none;
+    transform: translateX(-100%);
 }
 
 .search-sidebar:hover {
@@ -101,7 +98,7 @@ body {
     height: 32px;
     border-radius: var(--radius-md);
     cursor: pointer;
-    display: flex;
+    display: none; /* Caché par défaut sur desktop */
     align-items: center;
     justify-content: center;
     color: var(--text-secondary);
@@ -456,39 +453,34 @@ body {
 /* Floating Button to Open Sidebar */
 .floating-btn {
     position: fixed;
-    top: calc(var(--space-6) + 70px);
-    left: var(--space-6);
+    top: calc(60px);
+    left: var(--space-4);
     width: 48px;
     height: 48px;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     cursor: pointer;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     color: var(--primary);
     font-size: 20px;
     z-index: 999;
     transition: all 0.3s ease;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateX(-80px);
 }
 
 .floating-btn.visible {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(0);
+    display: flex;
 }
 
 .floating-btn:hover {
     background: var(--primary);
     color: white;
-    transform: translateX(0) scale(1.05);
+    transform: scale(1.05);
     box-shadow: var(--shadow-xl);
 }
 
@@ -739,9 +731,8 @@ body {
    ============================================ */
 
 .map-container {
-    position: absolute;
-    top: 0;
-    left: 0;
+    flex: 1;
+    position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -829,77 +820,165 @@ body {
    MOBILE RESPONSIVE
    ============================================ */
 
-/* Tablet (481px - 768px) */
-@media (max-width: 768px) and (min-width: 481px) {
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    .calculate-btn,
+    .toggle-sidebar-btn,
+    .floating-btn,
+    .notifications-toggle-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .input-group input {
+        min-height: 44px;
+    }
+
+    .autocomplete-results li {
+        min-height: 48px;
+    }
+
+    .notification-item {
+        padding: var(--space-5);
+    }
+}
+
+/* Tablet (481px - 1024px) */
+@media (max-width: 1024px) {
     .itinerary-page {
-        flex-direction: column;
-        height: calc(100vh - 50px);
+        display: block;
     }
 
     .search-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
         width: 100%;
-        max-height: 45vh;
-        border-right: none;
-        border-bottom: 1px solid var(--glass-border);
-        padding: var(--space-20);
+        max-width: 400px;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        border-right: 1px solid rgba(0, 0, 0, 0.1);
+        z-index: 1001;
+        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.2);
     }
 
-    .sidebar-header h2 {
-        font-size: var(--text-title-2);
+    .search-sidebar.hidden {
+        transform: translateX(-100%);
+    }
+
+    .toggle-sidebar-btn {
+        display: flex;
     }
 
     .map-container {
-        height: 55vh;
+        width: 100%;
+        height: 100vh;
+    }
+
+    .floating-btn.visible {
+        display: flex;
     }
 
     .summary-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-12);
+        gap: var(--space-3);
     }
 
-    .input-group label {
-        font-size: var(--text-subhead);
+    .notifications-panel {
+        width: 100%;
+        max-width: 100%;
+        right: -100%;
+        top: 0;
+        height: 100vh;
     }
 
-    .input-group input {
-        font-size: var(--text-subhead);
-        padding: var(--space-10) var(--space-12);
+    .notifications-panel.open {
+        right: 0;
     }
 
-    .calculate-btn {
-        padding: var(--space-14);
-        font-size: var(--text-subhead);
-    }
-
-    .map-legend {
-        bottom: var(--space-16);
-        right: var(--space-16);
-        padding: var(--space-12);
+    .notifications-toggle-btn {
+        top: auto;
+        bottom: var(--space-20);
+        right: var(--space-20);
     }
 }
 
 /* Mobile (max 768px) */
 @media (max-width: 768px) {
     .itinerary-page {
-        flex-direction: column;
         height: calc(100vh - 50px);
     }
 
     .search-sidebar {
-        width: 100%;
-        max-height: 50vh;
-        border-right: none;
-        border-bottom: 1px solid var(--glass-border);
-        padding: var(--space-16);
+        width: 90%;
+        max-width: 90%;
+        min-width: 0;
+        padding: var(--space-4);
     }
 
-    .map-container {
-        height: 50vh;
+    .sidebar-header h2 {
+        font-size: var(--text-lg);
+    }
+
+    .toggle-sidebar-btn {
+        width: 36px;
+        height: 36px;
     }
 
     .summary-grid {
         grid-template-columns: 1fr;
-        gap: var(--space-12);
+        gap: var(--space-3);
+    }
+
+    .autocomplete-results {
+        max-height: 180px;
+        font-size: 14px;
+    }
+
+    .input-group label {
+        font-size: 13px;
+    }
+
+    .input-group input {
+        font-size: 14px;
+        padding: var(--space-3);
+    }
+
+    .calculate-btn {
+        font-size: 14px;
+        padding: var(--space-3);
+    }
+
+    /* Notifications Panel Mobile */
+    .notifications-panel {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .notifications-toggle-btn {
+        width: 52px;
+        height: 52px;
+        bottom: var(--space-16);
+        right: var(--space-16);
+    }
+
+    /* Instructions Steps */
+    .instructions {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .step {
+        padding: var(--space-3);
+        font-size: 13px;
+    }
+
+    .map-legend {
+        bottom: var(--space-12);
+        right: var(--space-12);
+        font-size: 11px;
+        padding: var(--space-2);
     }
 }
 
@@ -910,80 +989,139 @@ body {
     }
 
     .search-sidebar {
-        padding: var(--space-12);
-        gap: var(--space-12);
-        max-height: 45vh;
+        width: 95%;
+        max-width: 95%;
+        padding: var(--space-3);
+        gap: var(--space-2);
+    }
+
+    .sidebar-header {
+        padding-bottom: var(--space-2);
+        margin-bottom: var(--space-2);
     }
 
     .sidebar-header h2 {
-        font-size: var(--text-title-3);
+        font-size: var(--text-base);
     }
 
     .toggle-sidebar-btn {
-        padding: var(--space-6);
-        font-size: var(--text-footnote);
+        width: 32px;
+        height: 32px;
+    }
+
+    .search-form {
+        gap: var(--space-2);
     }
 
     .input-group {
-        margin-bottom: var(--space-12);
+        gap: var(--space-1);
     }
 
     .input-group label {
-        font-size: var(--text-footnote);
+        font-size: 12px;
     }
 
     .input-group input {
-        font-size: var(--text-footnote);
-        padding: var(--space-8) var(--space-10);
+        font-size: 13px;
+        padding: var(--space-2);
+    }
+
+    .autocomplete-results {
+        max-height: 140px;
+        font-size: 12px;
+    }
+
+    .autocomplete-results li {
+        padding: 8px;
     }
 
     .summary {
-        padding: var(--space-12);
+        padding: var(--space-3);
     }
 
     .summary h3 {
-        font-size: var(--text-subhead);
+        font-size: var(--text-base);
+        margin-bottom: var(--space-2);
+    }
+
+    .summary-grid {
+        gap: var(--space-2);
     }
 
     .stat-value {
-        font-size: var(--text-title-3);
+        font-size: var(--text-xl);
     }
 
     .stat-label {
-        font-size: var(--text-caption);
+        font-size: 11px;
     }
 
     .calculate-btn {
-        padding: var(--space-10);
-        font-size: var(--text-footnote);
+        padding: var(--space-2);
+        font-size: 13px;
+    }
+
+    .instructions {
+        max-height: 150px;
     }
 
     .instructions h4 {
-        font-size: var(--text-subhead);
+        font-size: 13px;
     }
 
     .step {
-        padding: var(--space-10);
-        font-size: var(--text-footnote);
+        padding: var(--space-2);
+        font-size: 11px;
+    }
+
+    .step-number {
+        min-width: 20px;
+        height: 20px;
+        font-size: 11px;
     }
 
     .map-legend {
-        bottom: var(--space-8);
-        right: var(--space-8);
-        padding: var(--space-8);
-        font-size: var(--text-caption);
+        bottom: var(--space-6);
+        right: var(--space-6);
+        padding: var(--space-2);
+        font-size: 10px;
     }
 
     .map-legend h4 {
-        font-size: var(--text-footnote);
-        margin-bottom: var(--space-4);
+        font-size: 11px;
+        margin-bottom: var(--space-1);
+    }
+
+    .legend-item {
+        margin-bottom: var(--space-1);
     }
 
     .floating-btn {
+        top: 60px;
+        left: var(--space-2);
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+
+    .notifications-toggle-btn {
         bottom: var(--space-12);
-        left: var(--space-12);
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
+        right: var(--space-12);
+        width: 48px;
+        height: 48px;
+    }
+
+    .notifications-panel {
+        max-height: 80vh;
+        padding: var(--space-3);
+    }
+
+    .notifications-header h3 {
+        font-size: var(--text-base);
+    }
+
+    .notification-item {
+        padding: var(--space-3);
+        font-size: 12px;
     }
 }
