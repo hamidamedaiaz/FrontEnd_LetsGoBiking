@@ -13,9 +13,9 @@ export function createHeader(activePage = 'accueil') {
             <h1><i class="fas fa-bicycle"></i> Let's Go Biking</h1>
         </div>
         <nav class="nav-links">
-            <a href="html/index.html" class="${activePage === 'accueil' ? 'active' : ''}">Accueil</a>
-            <a href="html/itinerary.html" class="${activePage === 'itinerary' ? 'active' : ''}">Itinéraire</a>
-            <a href="html/about.html" class="${activePage === 'about' ? 'active' : ''}">À propos</a>
+            <a href="index.html" class="${activePage === 'accueil' ? 'active' : ''}">Accueil</a>
+            <a href="itinerary.html" class="${activePage === 'itinerary' ? 'active' : ''}">Itinéraire</a>
+            <a href="about.html" class="${activePage === 'about' ? 'active' : ''}">À propos</a>
         </nav>
     </div>
 </header>
