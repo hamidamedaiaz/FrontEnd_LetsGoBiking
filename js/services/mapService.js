@@ -95,47 +95,56 @@ class MapService {
      * ✅ Ajoute marker station avec infos
      */
     addStationMarker(lat, lon, stationData, type) {
-        const color = type === 'start' ? '#10b981' : '#f59e0b';
-        const label = type === 'start' ? '🚲 Prendre vélo' : '🅿️ Déposer vélo';
+        const isStart = type === 'start';
+        const color = isStart ? '#10b981' : '#f59e0b';
+        const emoji = isStart ? '🚲' : '🚲';
+        const label = isStart ? '🚲 Prendre vélo' : '🚲 Déposer vélo';
+
+        console.log(`   🎯 Création marker ${type} à [${lat}, ${lon}]`);
 
         const icon = L.divIcon({
-            className: 'station-marker',
-            html: `<div style="background: ${color}; color: white; width: 28px; height: 28px; 
-                   border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                   border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 14px;">
-                   <i class="fas fa-bicycle"></i>
-                   </div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 28]
+            className: `station-marker-${type}`,
+            html: `<div style="
+                background: ${color}; 
+                color: white; 
+                width: 36px; 
+                height: 36px; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                border: 4px solid white; 
+                box-shadow: 0 3px 10px rgba(0,0,0,0.4); 
+                font-size: 18px;
+                font-weight: bold;
+                z-index: 1000;
+            ">${emoji}</div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+            popupAnchor: [0, -18]
         });
 
-        const marker = L.marker([lat, lon], { icon })
-            .addTo(this.map)
-            .bindPopup(`
-                <div style="font-family: Arial; padding: 10px; min-width: 200px;">
-                    <strong style="color: ${color};">${label}</strong><br>
-                    <strong>${stationData.name}</strong><br>
-                    <hr style="margin: 8px 0;">
-                    <div style="display: flex; gap: 15px; font-size: 0.9em;">
-                        <div>
-                            <i class="fas fa-bicycle" style="color: #10b981;"></i>
-                            <strong>${stationData.bikes}</strong> vélos
-                        </div>
-                        <div>
-                            <i class="fas fa-parking" style="color: #3498db;"></i>
-                            <strong>${stationData.stands}</strong> places
-                        </div>
-                    </div>
+        const marker = L.marker([lat, lon], {
+            icon: icon,
+            zIndexOffset: 1000
+        })
+        .addTo(this.map)
+        .bindPopup(`
+            <div style="font-family: Arial, sans-serif; padding: 10px; min-width: 200px;">
+                <strong style="color: ${color}; font-size: 1.1em;">${label}</strong><br>
+                <div style="margin-top: 8px; color: #666;">
+                    ${stationData.name}
                 </div>
-            `);
+            </div>
+        `);
 
         this.markers.stations.push(marker);
-        console.log(`🚲 Station ${type} ajoutée:`, stationData.name);
+        console.log(`   ✅ Marker ${type} ajouté avec succès à la carte`);
+
+        return marker;
     }
 
-    /**
-     * ✅ MÉTHODE PRINCIPALE - Affiche l'itinéraire avec COORDONNÉES PAR STEP
-     */
+
     displayItinerary(data) {
         console.log('🗺️ === AFFICHAGE ITINÉRAIRE ===');
         console.log('Data reçue:', data);
@@ -148,9 +157,24 @@ class MapService {
             return;
         }
 
-        // ✅ Collecter les positions des stations pour éviter les doublons
-        const stationPositions = new Set();
         let previousEndPoint = null;
+
+        // ✅ NOUVELLE LOGIQUE : Analyser TOUS les steps pour identifier les stations
+        const stationMarkers = this.identifyStationPositions(data.Steps);
+
+        // ✅ Afficher les marqueurs de stations AVANT de tracer les routes
+        stationMarkers.forEach(marker => {
+            this.addStationMarker(
+                marker.lat,
+                marker.lon,
+                {
+                    name: marker.label,
+                    bikes: '?',
+                    stands: '?'
+                },
+                marker.type
+            );
+        });
 
         // ✅ TRACER CHAQUE STEP AVEC SES PROPRES COORDONNÉES
         data.Steps.forEach((step, index) => {
@@ -166,19 +190,18 @@ class MapService {
 
             const currType = step.type.toLowerCase();
             const prevType = index > 0 ? data.Steps[index - 1].type.toLowerCase() : null;
-            
+
             // ✅ CONNECTER au segment précédent SEULEMENT si pas de transition bike→walk ou walk→bike
-            const isTransition = (prevType === 'bike' && currType === 'walk') || 
-                                (prevType === 'walk' && currType === 'bike');
-            
+            const isTransition = (prevType === 'bike' && currType === 'walk') ||
+                (prevType === 'walk' && currType === 'bike');
+
             if (previousEndPoint && index > 0 && !isTransition) {
                 const firstPoint = coords[0];
                 const distance = Math.sqrt(
                     Math.pow(firstPoint[0] - previousEndPoint[0], 2) +
                     Math.pow(firstPoint[1] - previousEndPoint[1], 2)
                 );
-                
-                // Si la distance est petite, forcer la connexion
+
                 if (distance < 0.001) {
                     coords[0] = previousEndPoint;
                     console.log(`  🔗 Segment connecté au précédent`);
@@ -187,48 +210,13 @@ class MapService {
 
             console.log(`  → ${coords.length} points pour ce segment`);
 
-            // ✅ TRACER SELON LE TYPE AVEC LES BONNES COULEURS
+            // ✅ TRACER SELON LE TYPE
             if (currType === 'bike') {
-                // 🚴 VÉLO = VERT PLEIN
                 this.drawRoute(coords, '#10b981', 6, null, `🚴 ${step.instruction}`);
-                
-                // ✅ Ajouter marqueur uniquement si transition walk → bike (prendre vélo)
-                if (prevType === 'walk') {
-                    const [latStart, lonStart] = coords[0];
-                    const startKey = `${latStart.toFixed(5)},${lonStart.toFixed(5)}`;
-                    
-                    if (!stationPositions.has(startKey)) {
-                        console.log(`  🚲 Station PRENDRE VÉLO segment ${index + 1}: [${latStart}, ${lonStart}]`);
-                        this.addStationMarker(latStart, lonStart, {
-                            name: `Prendre vélo - Segment ${index + 1}`,
-                            bikes: '?',
-                            stands: '?'
-                        }, 'start');
-                        stationPositions.add(startKey);
-                    }
-                }
             } else {
-                // 🚶 MARCHE = ORANGE POINTILLÉ
                 this.drawRoute(coords, '#f59e0b', 5, '10, 5', `🚶 ${step.instruction}`);
-                
-                // ✅ Ajouter marqueur uniquement si transition bike → walk (déposer vélo)
-                if (prevType === 'bike') {
-                    const [latDeposit, lonDeposit] = coords[0];
-                    const depositKey = `${latDeposit.toFixed(5)},${lonDeposit.toFixed(5)}`;
-                    
-                    if (!stationPositions.has(depositKey)) {
-                        console.log(`  🅿️ Station DÉPOSER VÉLO après segment ${index}: [${latDeposit}, ${lonDeposit}]`);
-                        this.addStationMarker(latDeposit, lonDeposit, {
-                            name: `Déposer vélo - Segment ${index}`,
-                            bikes: '?',
-                            stands: '?'
-                        }, 'end');
-                        stationPositions.add(depositKey);
-                    }
-                }
             }
 
-            // Garder le dernier point pour connecter au prochain segment
             previousEndPoint = coords[coords.length - 1];
         });
 
@@ -236,6 +224,98 @@ class MapService {
         console.log('✅ Affichage terminé');
     }
 
+    /**
+     * ✅ NOUVELLE MÉTHODE : Identifie toutes les positions de stations à marquer
+     */
+    identifyStationPositions(steps) {
+        const markers = [];
+
+        for (let i = 0; i < steps.length; i++) {
+            const currStep = steps[i];
+            const prevStep = i > 0 ? steps[i - 1] : null;
+            const nextStep = i < steps.length - 1 ? steps[i + 1] : null;
+
+            const currType = currStep.type.toLowerCase();
+            const prevType = prevStep ? prevStep.type.toLowerCase() : null;
+            const nextType = nextStep ? nextStep.type.toLowerCase() : null;
+
+            // ✅ CAS 1 : Transition WALK → BIKE (prendre vélo)
+            if (prevType === 'walk' && currType === 'bike') {
+                const [lon, lat] = currStep.Coordinates[0];
+                markers.push({
+                    lat: lat,
+                    lon: lon,
+                    type: 'start',
+                    label: `Prendre vélo - Étape ${i + 1}`,
+                    stepIndex: i
+                });
+                console.log(`  🚲 Station PRENDRE VÉLO détectée à l'étape ${i + 1}`);
+            }
+
+            // ✅ CAS 2 : Transition BIKE → WALK (déposer vélo)
+            if (currType === 'bike' && nextType === 'walk') {
+                const coords = currStep.Coordinates;
+                const [lon, lat] = coords[coords.length - 1];
+                markers.push({
+                    lat: lat,
+                    lon: lon,
+                    type: 'end',
+                    label: `Déposer vélo - Étape ${i + 1}`,
+                    stepIndex: i
+                });
+                console.log(`  🅿️ Station DÉPOSER VÉLO détectée à l'étape ${i + 1}`);
+            }
+
+            // ✅ CAS 3 : Premier segment est BIKE (cas rare mais possible)
+            if (i === 0 && currType === 'bike') {
+                const [lon, lat] = currStep.Coordinates[0];
+                markers.push({
+                    lat: lat,
+                    lon: lon,
+                    type: 'start',
+                    label: `Départ à vélo`,
+                    stepIndex: i
+                });
+                console.log(`  🚲 Départ direct à vélo détecté`);
+            }
+
+            // ✅ CAS 4 : Dernier segment est BIKE (déposer à la fin)
+            if (i === steps.length - 1 && currType === 'bike') {
+                const coords = currStep.Coordinates;
+                const [lon, lat] = coords[coords.length - 1];
+                markers.push({
+                    lat: lat,
+                    lon: lon,
+                    type: 'end',
+                    label: `Arrivée à vélo`,
+                    stepIndex: i
+                });
+                console.log(`  🅿️ Arrivée directe à vélo détectée`);
+            }
+        }
+
+        // ✅ Dédupliquer les marqueurs proches (< 10m)
+        const deduplicated = [];
+        markers.forEach(marker => {
+            const isDuplicate = deduplicated.some(existing => {
+                const dist = Math.sqrt(
+                    Math.pow(existing.lat - marker.lat, 2) +
+                    Math.pow(existing.lon - marker.lon, 2)
+                ) * 111000; // Approximation en mètres
+
+                return dist < 10;
+            });
+
+            if (!isDuplicate) {
+                deduplicated.push(marker);
+            } else {
+                console.log(`  ⚠️ Marqueur dupliqué ignoré: ${marker.label}`);
+            }
+        });
+
+        console.log(`✅ ${deduplicated.length} marqueurs de stations identifiés`);
+        return deduplicated;
+    }
     /**
      * ✅ Dessine une route COLORÉE avec tooltip
      */
