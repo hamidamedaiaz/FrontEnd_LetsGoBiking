@@ -1,19 +1,4 @@
-/**
- * NotificationService
- * 
- * Service de gestion des notifications en temps réel depuis ActiveMQ.
- * Gère la connexion WebSocket STOMP, l'abonnement aux topics et la distribution
- * des notifications aux listeners.
- * 
- * Features:
- * - Connexion WebSocket avec protocole STOMP
- * - Tentative sur plusieurs ports (61614, 61613)
- * - Fallback en mode démo si ActiveMQ indisponible
- * - Gestion des reconnexions
- * - Distribution des événements aux listeners
- * 
- * @class NotificationService
- */
+
 class NotificationService {
     /**
      * @constructor
