@@ -148,6 +148,10 @@ class MapService {
             return;
         }
 
+        // ✅ Collecter les positions des stations pour éviter les doublons
+        const stationPositions = new Set();
+        let previousEndPoint = null;
+
         // ✅ TRACER CHAQUE STEP AVEC SES PROPRES COORDONNÉES
         data.Steps.forEach((step, index) => {
             console.log(`📍 Step ${index + 1}/${data.Steps.length}: ${step.type}`);
@@ -158,44 +162,74 @@ class MapService {
             }
 
             // Convertir [lon, lat] → [lat, lon] pour Leaflet
-            const coords = step.Coordinates.map(c => [c[1], c[0]]);
+            let coords = step.Coordinates.map(c => [c[1], c[0]]);
+
+            const currType = step.type.toLowerCase();
+            const prevType = index > 0 ? data.Steps[index - 1].type.toLowerCase() : null;
+            
+            // ✅ CONNECTER au segment précédent SEULEMENT si pas de transition bike→walk ou walk→bike
+            const isTransition = (prevType === 'bike' && currType === 'walk') || 
+                                (prevType === 'walk' && currType === 'bike');
+            
+            if (previousEndPoint && index > 0 && !isTransition) {
+                const firstPoint = coords[0];
+                const distance = Math.sqrt(
+                    Math.pow(firstPoint[0] - previousEndPoint[0], 2) +
+                    Math.pow(firstPoint[1] - previousEndPoint[1], 2)
+                );
+                
+                // Si la distance est petite, forcer la connexion
+                if (distance < 0.001) {
+                    coords[0] = previousEndPoint;
+                    console.log(`  🔗 Segment connecté au précédent`);
+                }
+            }
 
             console.log(`  → ${coords.length} points pour ce segment`);
 
             // ✅ TRACER SELON LE TYPE AVEC LES BONNES COULEURS
-            if (step.type.toLowerCase() === 'bike') {
+            if (currType === 'bike') {
                 // 🚴 VÉLO = VERT PLEIN
                 this.drawRoute(coords, '#10b981', 6, null, `🚴 ${step.instruction}`);
+                
+                // ✅ Ajouter marqueur uniquement si transition walk → bike (prendre vélo)
+                if (prevType === 'walk') {
+                    const [latStart, lonStart] = coords[0];
+                    const startKey = `${latStart.toFixed(5)},${lonStart.toFixed(5)}`;
+                    
+                    if (!stationPositions.has(startKey)) {
+                        console.log(`  🚲 Station PRENDRE VÉLO segment ${index + 1}: [${latStart}, ${lonStart}]`);
+                        this.addStationMarker(latStart, lonStart, {
+                            name: `Prendre vélo - Segment ${index + 1}`,
+                            bikes: '?',
+                            stands: '?'
+                        }, 'start');
+                        stationPositions.add(startKey);
+                    }
+                }
             } else {
                 // 🚶 MARCHE = ORANGE POINTILLÉ
                 this.drawRoute(coords, '#f59e0b', 5, '10, 5', `🚶 ${step.instruction}`);
-            }
-
-            // ✅ Ajouter marker de station si transition
-            if (index > 0) {
-                const prevType = data.Steps[index - 1].type.toLowerCase();
-                const currType = step.type.toLowerCase();
-
-                // Transition walk → bike = prendre vélo
-                if (prevType === 'walk' && currType === 'bike') {
-                    const [lat, lon] = coords[0];
-                    this.addStationMarker(lat, lon, {
-                        name: 'Station de départ',
-                        bikes: '?',
-                        stands: '?'
-                    }, 'start');
-                }
-
-                // Transition bike → walk = déposer vélo
-                if (prevType === 'bike' && currType === 'walk') {
-                    const [lat, lon] = coords[0];
-                    this.addStationMarker(lat, lon, {
-                        name: 'Station d\'arrivée',
-                        bikes: '?',
-                        stands: '?'
-                    }, 'end');
+                
+                // ✅ Ajouter marqueur uniquement si transition bike → walk (déposer vélo)
+                if (prevType === 'bike') {
+                    const [latDeposit, lonDeposit] = coords[0];
+                    const depositKey = `${latDeposit.toFixed(5)},${lonDeposit.toFixed(5)}`;
+                    
+                    if (!stationPositions.has(depositKey)) {
+                        console.log(`  🅿️ Station DÉPOSER VÉLO après segment ${index}: [${latDeposit}, ${lonDeposit}]`);
+                        this.addStationMarker(latDeposit, lonDeposit, {
+                            name: `Déposer vélo - Segment ${index}`,
+                            bikes: '?',
+                            stands: '?'
+                        }, 'end');
+                        stationPositions.add(depositKey);
+                    }
                 }
             }
+
+            // Garder le dernier point pour connecter au prochain segment
+            previousEndPoint = coords[coords.length - 1];
         });
 
         this.fitBounds();
